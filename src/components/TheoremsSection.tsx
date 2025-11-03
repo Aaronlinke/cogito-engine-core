@@ -1,6 +1,5 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, AlertTriangle, FileCheck } from "lucide-react";
 
 const theorems = [
@@ -107,18 +106,12 @@ export const TheoremsSection = () => {
                       <div className="p-3 bg-muted/30 rounded-lg">
                         <p className="text-sm leading-relaxed italic">{theorem.statement}</p>
                       </div>
-                      <Accordion type="single" collapsible>
-                        <AccordionItem value="proof" className="border-none">
-                          <AccordionTrigger className="text-sm text-muted-foreground hover:text-foreground py-2">
-                            Beweis-Skizze
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="p-3 bg-background/50 rounded-lg text-sm text-muted-foreground leading-relaxed">
-                              {theorem.proof}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
+                      <div className="mt-3 space-y-2">
+                        <h4 className="text-sm font-semibold text-primary">Beweis-Skizze</h4>
+                        <div className="p-3 bg-background/50 rounded-lg text-sm text-muted-foreground leading-relaxed">
+                          {theorem.proof}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

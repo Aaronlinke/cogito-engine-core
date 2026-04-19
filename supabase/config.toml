@@ -1,1 +1,7 @@
 project_id = "uycogedwumossksdgrkt"
+
+[functions.bot-tick]
+verify_jwt = false
+
+[functions.sultan-chat]
+verify_jwt = false

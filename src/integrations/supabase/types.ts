@@ -14,7 +14,168 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bots: {
+        Row: {
+          created_at: string
+          efficiency: number
+          id: string
+          last_tick: string | null
+          level: number
+          name: string
+          status: string
+          tasks_completed: number
+          type: string
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          efficiency?: number
+          id?: string
+          last_tick?: string | null
+          level?: number
+          name: string
+          status?: string
+          tasks_completed?: number
+          type: string
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          efficiency?: number
+          id?: string
+          last_tick?: string | null
+          level?: number
+          name?: string
+          status?: string
+          tasks_completed?: number
+          type?: string
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      system_logs: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json | null
+          source: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          source?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          bot_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          kind: string
+          wallet_id: string | null
+        }
+        Insert: {
+          amount: number
+          bot_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind: string
+          wallet_id?: string | null
+        }
+        Update: {
+          amount?: number
+          bot_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallet"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet: {
+        Row: {
+          coins: number
+          id: string
+          mining_rate: number
+          name: string
+          total_mined: number
+          updated_at: string
+        }
+        Insert: {
+          coins?: number
+          id?: string
+          mining_rate?: number
+          name?: string
+          total_mined?: number
+          updated_at?: string
+        }
+        Update: {
+          coins?: number
+          id?: string
+          mining_rate?: number
+          name?: string
+          total_mined?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

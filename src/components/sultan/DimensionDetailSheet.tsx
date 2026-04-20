@@ -34,7 +34,10 @@ interface Agent {
   role: string;
   status: string;
   level: number;
+  xp: number;
   output: number;
+  total_generated: number;
+  last_tick: string | null;
 }
 
 const CATEGORIES: Record<

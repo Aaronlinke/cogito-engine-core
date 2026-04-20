@@ -37,6 +37,7 @@ export const GlaskugelnPanel = () => {
   const [totalCoins, setTotalCoins] = useState(0);
   const [autoFlow, setAutoFlow] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [selectedDim, setSelectedDim] = useState<Dimension | null>(null);
 
   const positions = useMemo(() => {
     const radius = 38;

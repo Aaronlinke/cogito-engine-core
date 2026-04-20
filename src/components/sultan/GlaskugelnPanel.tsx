@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Zap, Activity, Play, Pause } from "lucide-react";
+import { DimensionDetailSheet } from "./DimensionDetailSheet";
 
 interface Dimension {
   id: number;
@@ -36,6 +37,7 @@ export const GlaskugelnPanel = () => {
   const [totalCoins, setTotalCoins] = useState(0);
   const [autoFlow, setAutoFlow] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [selectedDim, setSelectedDim] = useState<Dimension | null>(null);
 
   const positions = useMemo(() => {
     const radius = 38;
@@ -340,7 +342,12 @@ export const GlaskugelnPanel = () => {
                 aspectRatio: "1",
               }}
             >
-              <div className="group relative h-full w-full cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setSelectedDim(dim)}
+                aria-label={`${dim.name} öffnen`}
+                className="group relative h-full w-full cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-primary/60 hover:scale-110 transition-transform"
+              >
                 <div
                   className="absolute inset-0 rounded-full blur-md transition-opacity"
                   style={{
@@ -383,7 +390,7 @@ export const GlaskugelnPanel = () => {
                     {Number(dim.total_out).toFixed(0)}
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           );
         })}
@@ -391,9 +398,10 @@ export const GlaskugelnPanel = () => {
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] sm:grid-cols-4 md:grid-cols-6">
         {dimensions.map((dim) => (
-          <div
+          <button
             key={dim.id}
-            className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 py-1"
+            onClick={() => setSelectedDim(dim)}
+            className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 py-1 text-left transition-colors hover:border-primary/40 hover:bg-card/70"
           >
             <span
               className="inline-block h-2 w-2 rounded-full"
@@ -408,9 +416,15 @@ export const GlaskugelnPanel = () => {
             <span className="ml-auto font-mono text-muted-foreground">
               {Number(dim.coins).toFixed(0)}
             </span>
-          </div>
+          </button>
         ))}
       </div>
+
+      <DimensionDetailSheet
+        dimension={selectedDim}
+        open={!!selectedDim}
+        onOpenChange={(v) => !v && setSelectedDim(null)}
+      />
     </Card>
   );
 };

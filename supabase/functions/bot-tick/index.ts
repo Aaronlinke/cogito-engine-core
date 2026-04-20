@@ -1,7 +1,7 @@
 // Bot tick: simulates work for all 'running' bots — adds XP, completes tasks,
 // mines coins into the wallet, and writes system logs. Designed to be called
 // from the frontend on a heartbeat (every few seconds).
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

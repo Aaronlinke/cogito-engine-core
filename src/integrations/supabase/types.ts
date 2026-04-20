@@ -77,6 +77,56 @@ export type Database = {
         }
         Relationships: []
       }
+      dimension_agents: {
+        Row: {
+          category: string
+          created_at: string
+          dimension_id: number
+          id: string
+          level: number
+          metadata: Json | null
+          name: string
+          output: number
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          dimension_id: number
+          id?: string
+          level?: number
+          metadata?: Json | null
+          name: string
+          output?: number
+          role: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          dimension_id?: number
+          id?: string
+          level?: number
+          metadata?: Json | null
+          name?: string
+          output?: number
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dimension_agents_dimension_id_fkey"
+            columns: ["dimension_id"]
+            isOneToOne: false
+            referencedRelation: "dimensions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dimension_flows: {
         Row: {
           amount: number

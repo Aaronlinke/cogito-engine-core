@@ -83,39 +83,48 @@ export type Database = {
           created_at: string
           dimension_id: number
           id: string
+          last_tick: string | null
           level: number
           metadata: Json | null
           name: string
           output: number
           role: string
           status: string
+          total_generated: number
           updated_at: string
+          xp: number
         }
         Insert: {
           category: string
           created_at?: string
           dimension_id: number
           id?: string
+          last_tick?: string | null
           level?: number
           metadata?: Json | null
           name: string
           output?: number
           role: string
           status?: string
+          total_generated?: number
           updated_at?: string
+          xp?: number
         }
         Update: {
           category?: string
           created_at?: string
           dimension_id?: number
           id?: string
+          last_tick?: string | null
           level?: number
           metadata?: Json | null
           name?: string
           output?: number
           role?: string
           status?: string
+          total_generated?: number
           updated_at?: string
+          xp?: number
         }
         Relationships: [
           {
@@ -319,6 +328,7 @@ export type Database = {
         Args: { _amount: number; _from: number; _reason?: string; _to: number }
         Returns: string
       }
+      process_agent_tick: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never

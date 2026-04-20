@@ -342,7 +342,12 @@ export const GlaskugelnPanel = () => {
                 aspectRatio: "1",
               }}
             >
-              <div className="group relative h-full w-full cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setSelectedDim(dim)}
+                aria-label={`${dim.name} öffnen`}
+                className="group relative h-full w-full cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-primary/60 hover:scale-110 transition-transform"
+              >
                 <div
                   className="absolute inset-0 rounded-full blur-md transition-opacity"
                   style={{
@@ -385,7 +390,7 @@ export const GlaskugelnPanel = () => {
                     {Number(dim.total_out).toFixed(0)}
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           );
         })}

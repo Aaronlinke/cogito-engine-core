@@ -1,58 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Zap, Activity } from "lucide-react";
+import { Sparkles, Zap, Activity, Play, Pause } from "lucide-react";
 
-const DIMENSIONS = [
-  { id: 1, name: "Cognitio", glyph: "Ψ", hue: 217 },
-  { id: 2, name: "Aurum", glyph: "Au", hue: 45 },
-  { id: 3, name: "Mercatus", glyph: "₿", hue: 142 },
-  { id: 4, name: "Ludus", glyph: "◊", hue: 280 },
-  { id: 5, name: "Forum", glyph: "Ω", hue: 320 },
-  { id: 6, name: "Quantum", glyph: "Q", hue: 190 },
-  { id: 7, name: "Reflexio", glyph: "↻", hue: 30 },
-  { id: 8, name: "Nexus", glyph: "∞", hue: 260 },
-  { id: 9, name: "Genesis", glyph: "✦", hue: 100 },
-  { id: 10, name: "Abyssus", glyph: "▼", hue: 350 },
-  { id: 11, name: "Veritas", glyph: "△", hue: 60 },
-  { id: 12, name: "Fatum", glyph: "✧", hue: 240 },
-];
-
-interface DimensionState {
+interface Dimension {
   id: number;
+  name: string;
+  glyph: string;
+  hue: number;
   coins: number;
   load: number;
   sync: number;
   active: boolean;
+  total_in: number;
+  total_out: number;
 }
 
-interface CoinFlow {
+interface DimensionFlow {
   id: string;
-  from: number;
-  to: number;
+  from_dim: number;
+  to_dim: number;
   amount: number;
+  created_at: string;
+}
+
+interface AnimatedFlow extends DimensionFlow {
   startTime: number;
 }
 
 export const GlaskugelnPanel = () => {
-  const [dimensions, setDimensions] = useState<DimensionState[]>(
-    DIMENSIONS.map((d) => ({
-      id: d.id,
-      coins: Math.floor(Math.random() * 500) + 100,
-      load: Math.random() * 0.7 + 0.2,
-      sync: Math.random() * 0.4 + 0.6,
-      active: Math.random() > 0.2,
-    }))
-  );
-  const [flows, setFlows] = useState<CoinFlow[]>([]);
+  const [dimensions, setDimensions] = useState<Dimension[]>([]);
+  const [flows, setFlows] = useState<AnimatedFlow[]>([]);
   const [totalCoins, setTotalCoins] = useState(0);
-  const [emergence, setEmergence] = useState(0.5);
+  const [autoFlow, setAutoFlow] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  // Position calc — circle of 12 around center
   const positions = useMemo(() => {
-    const radius = 38; // % of container
-    return DIMENSIONS.map((_, i) => {
+    const radius = 38;
+    return Array.from({ length: 12 }, (_, i) => {
       const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
       return {
         x: 50 + Math.cos(angle) * radius,
@@ -61,19 +48,56 @@ export const GlaskugelnPanel = () => {
     });
   }, []);
 
-  // Pull live wallet to seed Meta-Kern total
+  // Load dimensions + wallet, subscribe realtime
   useEffect(() => {
-    const loadWallet = async () => {
-      const { data } = await supabase.from("wallet").select("coins").maybeSingle();
-      if (data) setTotalCoins(Number(data.coins));
+    const load = async () => {
+      const [{ data: dims }, { data: wallet }, { data: recentFlows }] = await Promise.all([
+        supabase.from("dimensions").select("*").order("id"),
+        supabase.from("wallet").select("coins").maybeSingle(),
+        supabase
+          .from("dimension_flows")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+      if (dims) setDimensions(dims as Dimension[]);
+      if (wallet) setTotalCoins(Number(wallet.coins));
+      if (recentFlows) {
+        const now = Date.now();
+        setFlows(
+          (recentFlows as DimensionFlow[]).map((f, i) => ({
+            ...f,
+            startTime: now - i * 200,
+          }))
+        );
+      }
     };
-    loadWallet();
+    load();
 
     const channel = supabase
-      .channel("glaskugeln-wallet")
+      .channel("glaskugeln-rt")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "wallet" },
+        { event: "UPDATE", schema: "public", table: "dimensions" },
+        (payload: any) => {
+          setDimensions((prev) =>
+            prev.map((d) => (d.id === payload.new.id ? { ...d, ...payload.new } : d))
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "dimension_flows" },
+        (payload: any) => {
+          setFlows((prev) => [
+            ...prev.slice(-15),
+            { ...(payload.new as DimensionFlow), startTime: Date.now() },
+          ]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "wallet" },
         (payload: any) => {
           if (payload.new?.coins != null) setTotalCoins(Number(payload.new.coins));
         }
@@ -85,50 +109,24 @@ export const GlaskugelnPanel = () => {
     };
   }, []);
 
-  // Simulation tick — coin flow + state evolution
+  // Auto-trigger real flows via edge function
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Spawn a new flow
-      const from = Math.floor(Math.random() * 12);
-      let to = Math.floor(Math.random() * 12);
-      while (to === from) to = Math.floor(Math.random() * 12);
-
-      const newFlow: CoinFlow = {
-        id: `${Date.now()}-${Math.random()}`,
-        from,
-        to,
-        amount: Math.floor(Math.random() * 20) + 1,
-        startTime: Date.now(),
-      };
-      setFlows((prev) => [...prev.slice(-15), newFlow]);
-
-      // Evolve dimensions
-      setDimensions((prev) =>
-        prev.map((d, i) => {
-          let coinDelta = 0;
-          if (i === from) coinDelta -= newFlow.amount;
-          if (i === to) coinDelta += newFlow.amount;
-          return {
-            ...d,
-            coins: Math.max(0, d.coins + coinDelta + (Math.random() * 4 - 1)),
-            load: Math.max(0.1, Math.min(1, d.load + (Math.random() * 0.1 - 0.05))),
-            sync: Math.max(0.3, Math.min(1, d.sync + (Math.random() * 0.06 - 0.03))),
-            active: Math.random() > 0.05 ? d.active : !d.active,
-          };
-        })
-      );
-
-      // Emergence drifts based on average sync
-      setEmergence((e) => {
-        const avgSync = dimensions.reduce((a, b) => a + b.sync, 0) / 12;
-        return e * 0.85 + avgSync * 0.15;
-      });
-    }, 1500);
-
+    if (!autoFlow) return;
+    const interval = setInterval(async () => {
+      if (busy) return;
+      setBusy(true);
+      try {
+        await supabase.functions.invoke("dimension-flow", { body: { auto: true } });
+      } catch (e) {
+        console.error("flow err", e);
+      } finally {
+        setBusy(false);
+      }
+    }, 2500);
     return () => clearInterval(interval);
-  }, [dimensions]);
+  }, [autoFlow, busy]);
 
-  // Cleanup old flows
+  // Cleanup old animated flows
   useEffect(() => {
     const cleanup = setInterval(() => {
       const now = Date.now();
@@ -137,12 +135,32 @@ export const GlaskugelnPanel = () => {
     return () => clearInterval(cleanup);
   }, []);
 
-  const avgSync = dimensions.reduce((a, b) => a + b.sync, 0) / 12;
+  const triggerOnce = async () => {
+    setBusy(true);
+    try {
+      await supabase.functions.invoke("dimension-flow", { body: { auto: true } });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const avgSync = dimensions.length
+    ? dimensions.reduce((a, b) => a + Number(b.sync), 0) / dimensions.length
+    : 0;
   const activeDims = dimensions.filter((d) => d.active).length;
+  const dimCoinsTotal = dimensions.reduce((a, b) => a + Number(b.coins), 0);
+  const emergence = avgSync;
+
+  if (dimensions.length === 0) {
+    return (
+      <Card className="p-6 text-center text-sm text-muted-foreground">
+        Lade Dimensionen…
+      </Card>
+    );
+  }
 
   return (
     <Card className="relative overflow-hidden border-border/50 bg-gradient-to-br from-card to-card/40 p-4 sm:p-6">
-      {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight">
@@ -150,10 +168,10 @@ export const GlaskugelnPanel = () => {
             Oasis · 12 Glaskugeln
           </h2>
           <p className="text-xs text-muted-foreground">
-            Meta-KI Omni-Kern · Cross-Dimension Sync
+            Meta-KI Omni-Kern · Echte Cross-Dimension Transaktionen
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="gap-1 border-primary/40 text-primary">
             <Activity className="h-3 w-3" />
             {activeDims}/12 aktiv
@@ -163,14 +181,30 @@ export const GlaskugelnPanel = () => {
             Sync {(avgSync * 100).toFixed(0)}%
           </Badge>
           <Badge variant="outline" className="border-secondary/40 text-secondary">
-            Emergenz Φ {(emergence * 100).toFixed(0)}%
+            Φ {(emergence * 100).toFixed(0)}%
           </Badge>
+          <Button
+            size="sm"
+            variant={autoFlow ? "default" : "outline"}
+            onClick={() => setAutoFlow((v) => !v)}
+            className="h-7 gap-1 px-2 text-xs"
+          >
+            {autoFlow ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {autoFlow ? "Auto" : "Pausiert"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={triggerOnce}
+            disabled={busy}
+            className="h-7 px-2 text-xs"
+          >
+            Flow
+          </Button>
         </div>
       </div>
 
-      {/* Stage */}
       <div className="relative mx-auto aspect-square w-full max-w-[560px]">
-        {/* SVG flow layer */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -184,7 +218,6 @@ export const GlaskugelnPanel = () => {
             </radialGradient>
           </defs>
 
-          {/* Background ring */}
           <circle
             cx="50"
             cy="50"
@@ -197,7 +230,6 @@ export const GlaskugelnPanel = () => {
           />
           <circle cx="50" cy="50" r="22" fill="url(#coreGlow)" />
 
-          {/* Connection lattice (faint) */}
           {positions.map((p, i) =>
             positions.slice(i + 1).map((q, j) => (
               <line
@@ -213,24 +245,28 @@ export const GlaskugelnPanel = () => {
             ))
           )}
 
-          {/* Spokes to center */}
-          {positions.map((p, i) => (
-            <line
-              key={`spoke-${i}`}
-              x1="50"
-              y1="50"
-              x2={p.x}
-              y2={p.y}
-              stroke={`hsl(${DIMENSIONS[i].hue} 80% 60%)`}
-              strokeWidth="0.1"
-              opacity={dimensions[i].active ? 0.35 : 0.1}
-            />
-          ))}
+          {positions.map((p, i) => {
+            const dim = dimensions[i];
+            return (
+              <line
+                key={`spoke-${i}`}
+                x1="50"
+                y1="50"
+                x2={p.x}
+                y2={p.y}
+                stroke={`hsl(${dim?.hue ?? 217} 80% 60%)`}
+                strokeWidth="0.1"
+                opacity={dim?.active ? 0.35 : 0.1}
+              />
+            );
+          })}
 
-          {/* Active coin flows */}
           {flows.map((f) => {
-            const p1 = positions[f.from];
-            const p2 = positions[f.to];
+            const fromIdx = f.from_dim - 1;
+            const toIdx = f.to_dim - 1;
+            const p1 = positions[fromIdx];
+            const p2 = positions[toIdx];
+            if (!p1 || !p2) return null;
             const elapsed = (Date.now() - f.startTime) / 2000;
             if (elapsed > 1) return null;
             const x = p1.x + (p2.x - p1.x) * elapsed;
@@ -249,23 +285,16 @@ export const GlaskugelnPanel = () => {
                 <circle
                   cx={x}
                   cy={y}
-                  r="0.9"
+                  r={0.7 + Math.min(1.5, Number(f.amount) / 30)}
                   fill="hsl(var(--accent))"
-                  opacity={1 - elapsed * 0.5}
-                >
-                  <animate
-                    attributeName="r"
-                    values="0.9;1.4;0.9"
-                    dur="0.6s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
+                  opacity={1 - elapsed * 0.4}
+                />
               </g>
             );
           })}
         </svg>
 
-        {/* Meta-KI Omni-Kern center */}
+        {/* Meta-KI Omni-Kern */}
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
           style={{ width: "26%", aspectRatio: "1" }}
@@ -282,22 +311,24 @@ export const GlaskugelnPanel = () => {
               }}
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
                 Omni-Kern
               </div>
               <div className="text-base font-bold sm:text-lg">Meta-KI</div>
               <div className="font-mono text-[10px] text-accent">
                 {totalCoins.toFixed(0)} ⛁
               </div>
+              <div className="font-mono text-[8px] text-muted-foreground">
+                Σ {dimCoinsTotal.toFixed(0)}
+              </div>
             </div>
           </div>
         </div>
 
         {/* 12 Glaskugeln */}
-        {DIMENSIONS.map((dim, i) => {
-          const state = dimensions[i];
+        {dimensions.map((dim, i) => {
           const pos = positions[i];
-          const size = 14 + state.load * 4; // % of container
+          const size = 14 + Number(dim.load) * 4;
           return (
             <div
               key={dim.id}
@@ -310,28 +341,25 @@ export const GlaskugelnPanel = () => {
               }}
             >
               <div className="group relative h-full w-full cursor-pointer">
-                {/* Glow halo */}
                 <div
                   className="absolute inset-0 rounded-full blur-md transition-opacity"
                   style={{
                     background: `radial-gradient(circle, hsl(${dim.hue} 80% 60% / ${
-                      state.active ? 0.5 : 0.15
+                      dim.active ? 0.5 : 0.15
                     }), transparent 70%)`,
-                    opacity: state.active ? 1 : 0.4,
+                    opacity: dim.active ? 1 : 0.4,
                   }}
                 />
-                {/* Sphere */}
                 <div
                   className="absolute inset-1 rounded-full border backdrop-blur-sm transition-all"
                   style={{
                     background: `radial-gradient(circle at 30% 30%, hsl(${dim.hue} 80% 70% / 0.4), hsl(${dim.hue} 80% 30% / 0.6))`,
-                    borderColor: `hsl(${dim.hue} 80% 60% / ${state.active ? 0.7 : 0.25})`,
-                    boxShadow: state.active
+                    borderColor: `hsl(${dim.hue} 80% 60% / ${dim.active ? 0.7 : 0.25})`,
+                    boxShadow: dim.active
                       ? `0 0 20px hsl(${dim.hue} 80% 60% / 0.4)`
                       : "none",
                   }}
                 />
-                {/* Glyph + label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <div
                     className="text-sm font-bold"
@@ -343,12 +371,16 @@ export const GlaskugelnPanel = () => {
                     {dim.id}
                   </div>
                 </div>
-                {/* Hover tooltip */}
                 <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2 py-1 text-[10px] opacity-0 shadow-lg backdrop-blur transition-opacity group-hover:opacity-100">
                   <div className="font-bold">{dim.name}</div>
                   <div className="font-mono text-muted-foreground">
-                    {state.coins.toFixed(0)} ⛁ · Load{" "}
-                    {(state.load * 100).toFixed(0)}%
+                    {Number(dim.coins).toFixed(0)} ⛁ · Load{" "}
+                    {(Number(dim.load) * 100).toFixed(0)}% · Sync{" "}
+                    {(Number(dim.sync) * 100).toFixed(0)}%
+                  </div>
+                  <div className="font-mono text-[9px] text-muted-foreground">
+                    in {Number(dim.total_in).toFixed(0)} · out{" "}
+                    {Number(dim.total_out).toFixed(0)}
                   </div>
                 </div>
               </div>
@@ -357,30 +389,27 @@ export const GlaskugelnPanel = () => {
         })}
       </div>
 
-      {/* Legend */}
       <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] sm:grid-cols-4 md:grid-cols-6">
-        {DIMENSIONS.map((dim, i) => {
-          const state = dimensions[i];
-          return (
-            <div
-              key={dim.id}
-              className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 py-1"
-            >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{
-                  backgroundColor: `hsl(${dim.hue} 80% 60%)`,
-                  boxShadow: state.active
-                    ? `0 0 6px hsl(${dim.hue} 80% 60%)`
-                    : "none",
-                }}
-              />
-              <span className="font-mono opacity-80">
-                {dim.id}.{dim.name}
-              </span>
-            </div>
-          );
-        })}
+        {dimensions.map((dim) => (
+          <div
+            key={dim.id}
+            className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 py-1"
+          >
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{
+                backgroundColor: `hsl(${dim.hue} 80% 60%)`,
+                boxShadow: dim.active ? `0 0 6px hsl(${dim.hue} 80% 60%)` : "none",
+              }}
+            />
+            <span className="font-mono opacity-80">
+              {dim.id}.{dim.name}
+            </span>
+            <span className="ml-auto font-mono text-muted-foreground">
+              {Number(dim.coins).toFixed(0)}
+            </span>
+          </div>
+        ))}
       </div>
     </Card>
   );

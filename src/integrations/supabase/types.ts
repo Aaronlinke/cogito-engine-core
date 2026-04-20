@@ -77,6 +77,90 @@ export type Database = {
         }
         Relationships: []
       }
+      dimension_flows: {
+        Row: {
+          amount: number
+          created_at: string
+          from_dim: number
+          id: string
+          reason: string | null
+          to_dim: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_dim: number
+          id?: string
+          reason?: string | null
+          to_dim: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_dim?: number
+          id?: string
+          reason?: string | null
+          to_dim?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dimension_flows_from_dim_fkey"
+            columns: ["from_dim"]
+            isOneToOne: false
+            referencedRelation: "dimensions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dimension_flows_to_dim_fkey"
+            columns: ["to_dim"]
+            isOneToOne: false
+            referencedRelation: "dimensions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dimensions: {
+        Row: {
+          active: boolean
+          coins: number
+          glyph: string
+          hue: number
+          id: number
+          load: number
+          name: string
+          sync: number
+          total_in: number
+          total_out: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          coins?: number
+          glyph: string
+          hue: number
+          id: number
+          load?: number
+          name: string
+          sync?: number
+          total_in?: number
+          total_out?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          coins?: number
+          glyph?: string
+          hue?: number
+          id?: number
+          load?: number
+          name?: string
+          sync?: number
+          total_in?: number
+          total_out?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_logs: {
         Row: {
           created_at: string
@@ -181,7 +265,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      execute_dimension_flow: {
+        Args: { _amount: number; _from: number; _reason?: string; _to: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

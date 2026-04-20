@@ -398,9 +398,10 @@ export const GlaskugelnPanel = () => {
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] sm:grid-cols-4 md:grid-cols-6">
         {dimensions.map((dim) => (
-          <div
+          <button
             key={dim.id}
-            className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 py-1"
+            onClick={() => setSelectedDim(dim)}
+            className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2 py-1 text-left transition-colors hover:border-primary/40 hover:bg-card/70"
           >
             <span
               className="inline-block h-2 w-2 rounded-full"
@@ -415,9 +416,15 @@ export const GlaskugelnPanel = () => {
             <span className="ml-auto font-mono text-muted-foreground">
               {Number(dim.coins).toFixed(0)}
             </span>
-          </div>
+          </button>
         ))}
       </div>
+
+      <DimensionDetailSheet
+        dimension={selectedDim}
+        open={!!selectedDim}
+        onOpenChange={(v) => !v && setSelectedDim(null)}
+      />
     </Card>
   );
 };

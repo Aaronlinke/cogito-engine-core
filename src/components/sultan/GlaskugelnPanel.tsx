@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Zap, Activity, Play, Pause } from "lucide-react";
+import { DimensionDetailSheet } from "./DimensionDetailSheet";
 
 interface Dimension {
   id: number;

@@ -34,7 +34,10 @@ interface Agent {
   role: string;
   status: string;
   level: number;
+  xp: number;
   output: number;
+  total_generated: number;
+  last_tick: string | null;
 }
 
 const CATEGORIES: Record<
@@ -227,42 +230,60 @@ export const DimensionDetailSheet = ({
                       <span className="ml-auto font-mono text-[10px]">{items.length}</span>
                     </h3>
                     <div className="space-y-1.5">
-                      {items.map((agent) => (
-                        <button
-                          key={agent.id}
-                          onClick={() => toggleAgent(agent)}
-                          className="group flex w-full items-center gap-2 rounded-md border border-border/50 bg-card/40 p-2 text-left transition-colors hover:border-primary/40 hover:bg-card/70"
-                        >
-                          <div
-                            className={`h-2 w-2 shrink-0 rounded-full ${
-                              agent.status === "active"
-                                ? "bg-primary shadow-[0_0_6px_hsl(var(--primary))]"
-                                : "bg-muted"
-                            }`}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-xs font-medium">
-                              {agent.name}
+                      {items.map((agent) => {
+                        const xpNeeded = agent.level * 100;
+                        const xpPct = Math.min(100, (Number(agent.xp) / xpNeeded) * 100);
+                        return (
+                          <button
+                            key={agent.id}
+                            onClick={() => toggleAgent(agent)}
+                            className="group flex w-full flex-col gap-1.5 rounded-md border border-border/50 bg-card/40 p-2 text-left transition-colors hover:border-primary/40 hover:bg-card/70"
+                          >
+                            <div className="flex w-full items-center gap-2">
+                              <div
+                                className={`h-2 w-2 shrink-0 rounded-full ${
+                                  agent.status === "active"
+                                    ? "bg-primary shadow-[0_0_6px_hsl(var(--primary))] animate-pulse"
+                                    : "bg-muted"
+                                }`}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-xs font-medium">
+                                  {agent.name}
+                                </div>
+                                <div className="truncate text-[10px] text-muted-foreground">
+                                  {agent.role}
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                                <Badge
+                                  variant="outline"
+                                  className="h-4 px-1 font-mono text-[9px]"
+                                >
+                                  L{agent.level}
+                                </Badge>
+                                {Number(agent.total_generated) > 0 && (
+                                  <span className="font-mono text-[9px] text-accent">
+                                    Σ {Number(agent.total_generated).toFixed(0)} ⛁
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="truncate text-[10px] text-muted-foreground">
-                              {agent.role}
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-0.5">
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 font-mono text-[9px]"
-                            >
-                              L{agent.level}
-                            </Badge>
-                            {Number(agent.output) > 0 && (
-                              <span className="font-mono text-[9px] text-accent">
-                                {Number(agent.output).toFixed(0)} ⛁/h
+                            {/* XP bar */}
+                            <div className="flex w-full items-center gap-1.5">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted/40">
+                                <div
+                                  className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                                  style={{ width: `${xpPct}%` }}
+                                />
+                              </div>
+                              <span className="font-mono text-[8px] text-muted-foreground">
+                                {agent.xp}/{xpNeeded} XP
                               </span>
-                            )}
-                          </div>
-                        </button>
-                      ))}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );

@@ -6,7 +6,6 @@ import { WalletPanel } from "./sultan/WalletPanel";
 import { MapPanel } from "./sultan/MapPanel";
 import { ChatPanel } from "./sultan/ChatPanel";
 import { LogsPanel } from "./sultan/LogsPanel";
-import { GlaskugelnPanel } from "./sultan/GlaskugelnPanel";
 
 export const BlackSultanOS = () => {
   const [systemTime, setSystemTime] = useState(Date.now());
@@ -24,9 +23,7 @@ export const BlackSultanOS = () => {
       
       <main className="container mx-auto p-4 space-y-4">
         <SystemStatus />
-
-        <GlaskugelnPanel />
-
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <BotsPanel />
           <WalletPanel />
